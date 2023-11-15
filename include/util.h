@@ -16,6 +16,7 @@
 
 #define USE_NVM_MALLOC
 // #define PMEM
+// #define USE_NVALLOC
 
 static void clear_cache()
 {

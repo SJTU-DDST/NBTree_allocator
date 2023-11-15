@@ -27,6 +27,11 @@
 #ifdef PMEM
 #include "../pmdk/allocator.h"
 #endif
+#ifdef USE_NVALLOC
+extern "C" {
+  #include "nvalloc.h"
+}
+#endif
 #define eADR
 #define NVM
 #define CACHE_LINE 64
@@ -64,16 +69,17 @@ void *data_alloc(size_t size, bool with_bitmap_set)
         NVMMgr_ns::SetBitmap(ret);
       }
       // std::cout<<"alloc "<< ret<< "\n";
-	  #else
-      #ifdef PMEM
+	  #elif defined(PMEM)
       void *ret;
       // std::cout<<"here "<< "\n";
         Allocator::Allocate(&ret, size);
         // std::cout<<"alloc "<< ret<< "\n";
-      #else
+    #elif defined(USE_NVALLOC)
+      void *ret = nullptr;
+      nvalloc_malloc_to(size, &ret);
+    #else
       void *ret = curr_addr;
       curr_addr += size;
-      #endif
     #endif
     return ret;
 }
@@ -588,9 +594,11 @@ public:
           #ifdef USE_NVM_MALLOC
           NVMMgr_ns::MarkNodeGarbage((void*)leaf->data);
           NVMMgr_ns::ResetLog((void*)leaf->data);
-          #endif
-          #ifdef PMEM
+          #elif defined(PMEM)
           Allocator::Free((void*)leaf->data);
+          #elif defined(USE_NVALLOC)
+          void *to_free = (void*)leaf->data;
+          nvalloc_free_from(&to_free);
           #endif
         }
         l.release();
@@ -658,9 +666,11 @@ public:
             #ifdef USE_NVM_MALLOC
             NVMMgr_ns::MarkNodeGarbage((void*)leaf->data);
             NVMMgr_ns::ResetLog((void*)leaf->data);
-            #endif
-            #ifdef PMEM
+            #elif defined(PMEM)
             Allocator::Free((void*)leaf->data);
+            #elif defined(USE_NVALLOC)
+            void *to_free = (void*)leaf->data;
+            nvalloc_free_from(&to_free);
             #endif
           }
           l.release();
@@ -677,9 +687,11 @@ public:
             #ifdef USE_NVM_MALLOC
             NVMMgr_ns::MarkNodeGarbage((void*)leaf->data);
             NVMMgr_ns::ResetLog((void*)leaf->data);
-            #endif
-            #ifdef PMEM
+            #elif defined(PMEM)
             Allocator::Free((void*)leaf->data);
+            #elif defined(USE_NVALLOC)
+            void *to_free = (void*)leaf->data;
+            nvalloc_free_from(&to_free);
             #endif
           }
           l.release();

@@ -32,6 +32,7 @@ endif ()
 
 link_directories("${PROJECT_SOURCE_DIR}/third-party-lib")
 link_libraries("${PROJECT_SOURCE_DIR}/third-party-lib/libtbb.so.2")
+link_libraries("${PROJECT_SOURCE_DIR}/third-party-lib/libnvalloc.a")
 link_directories(/usr/lib/x86_64-linux-gnu/)
 link_libraries(boost_system boost_thread pthread pmemobj pmem)
 
