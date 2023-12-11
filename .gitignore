@@ -3,5 +3,6 @@
 *.bin
 
 build/
+log/
 test.md
 .vscode

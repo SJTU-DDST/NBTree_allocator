@@ -32,6 +32,11 @@ extern "C" {
   #include "nvalloc.h"
 }
 #endif
+#ifdef USE_NVMMALLOC
+extern "C" {
+  #include "nvm_malloc.h"
+}
+#endif
 #define eADR
 #define NVM
 #define CACHE_LINE 64
@@ -61,6 +66,12 @@ typedef tbb::speculative_spin_rw_mutex speculative_lock_t;
 typedef speculative_lock_t::scoped_lock htm_lock;
 // using namespace std;
 
+class page;
+class leaf_node_t;
+class data_node_t;
+class inner_node_t;
+
+#ifndef USE_NVMMALLOC
 void *data_alloc(size_t size, bool with_bitmap_set)
 {
     #ifdef USE_NVM_MALLOC
@@ -83,6 +94,14 @@ void *data_alloc(size_t size, bool with_bitmap_set)
     #endif
     return ret;
 }
+#else
+void *data_alloc(size_t size, data_node_t* prev)
+{
+    void *ret = nvm_reserve(size);
+    nvm_activate(ret, (void**)&prev, ret, NULL, NULL); /* if NULL is used for link_ptr1 or link_ptr2, it will be ignored */
+    return ret;
+}
+#endif
 
 void *leaf_alloc(size_t size)
 {
@@ -92,12 +111,6 @@ void *leaf_alloc(size_t size)
 
   return ret;
 }
-
-class
-    page;
-class leaf_node_t;
-class data_node_t;
-class inner_node_t;
 
 class btree
 {
@@ -279,7 +292,11 @@ public:
   {
     number = 0;
     bitmap = 0;
+    #ifndef USE_NVMMALLOC
     data = (data_node_t *)data_alloc(sizeof(data_node_t),true);
+    #else
+    data = (data_node_t *)data_alloc(sizeof(data_node_t), data);
+    #endif
     log = NULL;
     next = NULL;
     copy_flag = sync_flag = prev_flag = fin_flag = 0;
@@ -599,6 +616,8 @@ public:
           #elif defined(USE_NVALLOC)
           void *to_free = (void*)leaf->data;
           nvalloc_free_from(&to_free);
+          #elif defined(USE_NVMMALLOC)
+          nvm_free((void*)leaf->data, NULL, NULL, NULL, NULL);
           #endif
         }
         l.release();
@@ -671,6 +690,8 @@ public:
             #elif defined(USE_NVALLOC)
             void *to_free = (void*)leaf->data;
             nvalloc_free_from(&to_free);
+            #elif defined(USE_NVMMALLOC)
+            nvm_free((void*)leaf->data, NULL, NULL, NULL, NULL);
             #endif
           }
           l.release();
@@ -692,6 +713,8 @@ public:
             #elif defined(USE_NVALLOC)
             void *to_free = (void*)leaf->data;
             nvalloc_free_from(&to_free);
+            #elif defined(USE_NVMMALLOC)
+            nvm_free((void*)leaf->data, NULL, NULL, NULL, NULL);
             #endif
           }
           l.release();
@@ -1296,8 +1319,13 @@ void btree::copy(leaf_node_t *leaf)
   // 2. alllocate leaf and data
   leaf_node_t *firleaf = (leaf_node_t *)leaf_alloc(sizeof(leaf_node_t));
   leaf_node_t *secleaf = (leaf_node_t *)leaf_alloc(sizeof(leaf_node_t));
+  #ifndef USE_NVMMALLOC
   data_node_t *firdata = (data_node_t *)data_alloc(sizeof(data_node_t),false);
   data_node_t *secdata = (data_node_t *)data_alloc(sizeof(data_node_t),false);
+  #else
+  data_node_t *firdata = (data_node_t *)data_alloc(sizeof(data_node_t), firleaf->data);
+  data_node_t *secdata = (data_node_t *)data_alloc(sizeof(data_node_t), secleaf->data);
+  #endif
   #ifdef USE_NVM_MALLOC
   NVMMgr_ns::SetLog((void*)leaf->data, (void*)firdata ,(void*)secdata);
   #endif

@@ -144,6 +144,8 @@ public:
 		#ifdef USE_NVM_MALLOC
 			NVMMgr_ns::register_threadinfo();
 		#elif defined(PMEM)
+		#elif defined(USE_NVALLOC)
+		#elif defined(USE_NVMMALLOC)
 		#else
 			start_addr = thread_space_start_addr + workerid * SPACE_PER_THREAD;
 			curr_addr = start_addr;
@@ -209,6 +211,9 @@ public:
 #elif defined(USE_NVALLOC)
 		printf("Initialize nv_alloc\n");
 		nvalloc_init();
+#elif defined(USE_NVMMALLOC)
+		printf("Initialize nvm_malloc\n");
+		nvm_initialize("/mnt/pmem1/nvmmalloc/", 0); /* initialize empty */
 #else
 		// Create memory pool
 		int fd = open("/mnt/pmem1/btree", O_RDWR);

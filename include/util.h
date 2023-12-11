@@ -14,9 +14,10 @@
 
 #include <bits/stdc++.h>
 
-#define USE_NVM_MALLOC
-// #define PMEM
-// #define USE_NVALLOC
+// #define USE_NVM_MALLOC // calloc
+// #define PMEM // pmdk baseline
+// #define USE_NVALLOC // nv_alloc baseline
+#define USE_NVMMALLOC // nvm_malloc baseline
 
 static void clear_cache()
 {
